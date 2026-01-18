@@ -51,7 +51,7 @@ echo "✓ pip清华源已配置"
 # 从GitHub下载Python文件
 echo ""
 echo "从GitHub下载项目文件..."
-REPO_URL="https://raw.githubusercontent.com/wzmwayne/easy_mc_server_lunch/main"
+REPO_URL="https://wzmwayne.github.io/easy_mc_server_lunch"
 
 # 下载主程序
 echo "正在下载 mc_server_manager.py..."
