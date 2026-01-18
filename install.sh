@@ -10,6 +10,17 @@ echo "  开发者: wzmwayne 和 iFlow CLI"
 echo "=========================================="
 echo ""
 
+# 设置清华源
+echo "配置清华源..."
+export PKG_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/termux"
+sed -i 's|https://packages-cf.termux.dev|https://mirrors.tuna.tsinghua.edu.cn/termux|g' $PREFIX/etc/apt/sources.list 2>/dev/null || true
+echo "✓ 清华源已配置"
+
+# 更新包列表
+echo "更新包列表..."
+pkg update -y
+echo "✓ 包列表已更新"
+
 # 检查Python
 if ! command -v python3 &> /dev/null; then
     echo "❌ Python3 未安装，正在安装..."
@@ -25,6 +36,33 @@ if ! command -v pip3 &> /dev/null; then
 else
     echo "✓ pip3 已安装"
 fi
+
+# 配置pip清华源（临时）
+echo ""
+echo "配置pip清华源..."
+mkdir -p ~/.pip
+cat > ~/.pip/pip.conf << 'EOF'
+[global]
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple
+trusted-host = pypi.tuna.tsinghua.edu.cn
+EOF
+echo "✓ pip清华源已配置"
+
+# 从GitHub下载Python文件
+echo ""
+echo "从GitHub下载项目文件..."
+REPO_URL="https://raw.githubusercontent.com/wzmwayne/easy_mc_server_lunch/main"
+
+# 下载主程序
+echo "正在下载 mc_server_manager.py..."
+curl -fsSL "${REPO_URL}/mc_server_manager.py" -o mc_server_manager.py
+echo "✓ mc_server_manager.py 下载完成"
+
+# 下载模板文件
+echo "正在下载模板文件..."
+mkdir -p templates
+curl -fsSL "${REPO_URL}/templates/index.html" -o templates/index.html
+echo "✓ templates/index.html 下载完成"
 
 # 安装Python依赖
 echo ""
