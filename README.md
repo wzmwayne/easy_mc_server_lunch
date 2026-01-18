@@ -2,6 +2,15 @@
 
 基于Flask的现代化Web界面Minecraft Fabric服务器管理工具，提供完整的服务器安装、配置和管理功能。
 
+## 🚀 快速安装
+
+一键安装命令：
+```bash
+curl -fsSL https://raw.githubusercontent.com/wzmwayne/easy_mc_server_lunch/main/install.sh | bash
+```
+
+或者访问在线安装页面：https://wzmwayne.github.io/easy_mc_server_lunch/
+
 ## 开发者
 
 本项目由 **wzmwayne** 和 **iFlow CLI** 共同开发。
