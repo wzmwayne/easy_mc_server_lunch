@@ -1,15 +1,16 @@
-# Minecraft Fabric Server Manager - AI开发者文档
+# Easy MC Server Lunch - AI开发者文档
 
 本文档为AI开发者提供详细的技术文档，用于理解、维护和扩展本项目。
 
 ## 项目概述
 
-**项目名称**: Minecraft Fabric Server Manager (Web版)
+**项目名称**: Easy MC Server Lunch
 **版本**: 2.1.0
 **开发语言**: Python 3.7+
 **Web框架**: Flask
 **前端技术**: HTML5 + 原生CSS + JavaScript
 **目标平台**: Termux (Android) / Linux
+**开发者**: wzmwayne 和 iFlow CLI
 
 ## 项目结构
 

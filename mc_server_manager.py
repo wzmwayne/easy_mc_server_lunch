@@ -1624,7 +1624,7 @@ def main():
         sys.exit(1)
     
     print(f"{Colors.HEADER}{'='*60}{Colors.ENDC}")
-    print(f"{Colors.HEADER}  Minecraft Fabric 服务器管理端 (Web版){Colors.ENDC}")
+    print(f"{Colors.HEADER}  Easy MC Server Lunch (Web版){Colors.ENDC}")
     print(f"{Colors.HEADER}{'='*60}{Colors.ENDC}")
     print(f"数据目录: {manager.server_dir}")
     
