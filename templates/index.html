@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Fabric 服务器管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #0d0d0d;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: #1a1a1a;
+            border-bottom: 2px solid #5D8C3E;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            color: #5D8C3E;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .col-3 {
+            flex: 0 0 calc(25% - 1rem);
+            min-width: 250px;
+        }
+
+        .col-9 {
+            flex: 0 0 calc(75% - 1rem);
+            min-width: 300px;
+        }
+
+        .card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: #333;
+            padding: 1rem;
+            border-bottom: 1px solid #5D8C3E;
+            color: #5D8C3E;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #c82333;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+            background: #e0a800;
+        }
+
+        .btn-primary {
+            background: #5D8C3E;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #4a7031;
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .d-grid {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 1rem;
+        }
+
+        .status-running {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-stopped {
+            background: #dc3545;
+            color: white;
+        }
+
+        .log-container {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 1rem;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .log-line {
+            margin: 2px 0;
+            word-wrap: break-word;
+        }
+
+        .log-info { color: #5bc0de; }
+        .log-warn { color: #ffc107; }
+        .log-error { color: #dc3545; }
+        .log-success { color: #5cb85c; }
+        .log-output { color: #e0e0e0; }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-control, .form-select {
+            width: 100%;
+            padding: 0.5rem;
+            background: #0d0d0d;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            outline: none;
+            border-color: #5D8C3E;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .input-group .form-control {
+            flex: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        th {
+            background: #333;
+            color: #5D8C3E;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background: rgba(93, 140, 62, 0.1);
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #5D8C3E;
+        }
+
+        .stat-label {
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 500;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 4px;
+            color: white;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast-success { background: #28a745; }
+        .toast-danger { background: #dc3545; }
+        .toast-warning { background: #ffc107; color: #000; }
+        .toast-info { background: #17a2b8; }
+
+        hr {
+            border: none;
+            border-top: 1px solid #333;
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .col-3, .col-9 {
+                flex: 0 0 100%;
+                min-width: auto;
+            }
+            
+            .navbar {
+                flex-direction: column;
+                gap: 0.5rem;
+                text-align: center;
+            }
+            
+            .tab-btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0d0d0d;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #5D8C3E;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a class="navbar-brand">🎮 Minecraft Fabric 服务器管理</a>
+        <div>
+            <span id="serverStatusBadge" class="status-badge status-stopped">
+                ● 未运行
+            </span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-3">
+                <div class="card">
+                    <div class="card-header">⚙️ 服务器控制</div>
+                    <div class="card-body">
+                        <div id="installPrompt" style="display: none; margin-bottom: 1rem; padding: 1rem; background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; border-radius: 4px;">
+                            <p style="margin-bottom: 0.5rem; color: #dc3545;">⚠️ Fabric服务器未安装</p>
+                            <div class="form-group">
+                                <label class="form-label">Minecraft版本</label>
+                                <input type="text" class="form-control" id="installVersion" value="1.21.5" placeholder="例如: 1.21.5">
+                            </div>
+                            <button class="btn btn-primary" onclick="installServer()">📥 安装Fabric服务器</button>
+                        </div>
+                        <div class="d-grid">
+                            <button id="btnStart" class="btn btn-success" onclick="startServer()">▶ 启动服务器</button>
+                            <button id="btnStop" class="btn btn-danger" onclick="stopServer()" disabled>⏹ 停止服务器</button>
+                            <button id="btnRestart" class="btn btn-warning" onclick="restartServer()" disabled>🔄 重启服务器</button>
+                            <button id="btnKillJava" class="btn btn-danger" onclick="killJava()" style="margin-top: 0.5rem;">💀 强制结束所有Java进程</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">📊 服务器信息</div>
+                    <div class="card-body">
+                        <div class="stat-card">
+                            <div class="stat-value" id="statMemory">0 MB</div>
+                            <div class="stat-label">内存使用</div>
+                        </div>
+                        <hr>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statCPU">0%</div>
+                            <div class="stat-label">CPU 使用</div>
+                        </div>
+                        <hr>
+                        <div class="info-row">
+                            <span class="info-label">服务器名称:</span>
+                            <span id="serverName">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">MOTD:</span>
+                            <span id="serverMOTD">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">最大玩家数:</span>
+                            <span id="maxPlayers">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">端口:</span>
+                            <span id="serverPort">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">游戏模式:</span>
+                            <span id="gameMode">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">难度:</span>
+                            <span id="difficulty">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">世界名称:</span>
+                            <span id="levelName">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 时间同步 -->
+                <div class="card">
+                    <div class="card-header">🕐 时间同步</div>
+                    <div class="card-body">
+                        <div class="info-row">
+                            <span class="info-label">状态:</span>
+                            <span id="timeSyncStatus">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">上次同步:</span>
+                            <span id="lastTimeSync">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">同步间隔:</span>
+                            <span id="timeSyncInterval">Loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">距离下次同步:</span>
+                            <span id="timeUntilNextSync">Loading...</span>
+                        </div>
+                        <hr>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" onclick="syncTime()">🔄 立即同步</button>
+                            <button class="btn btn-success" onclick="enableTimeSync()">✅ 启用自动同步</button>
+                            <button class="btn btn-danger" onclick="disableTimeSync()">❌ 禁用自动同步</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-9">
+                <!-- 实时输出 -->
+                <div class="card" style="margin-bottom: 1rem;">
+                    <div class="card-header">
+                        <span>📋 实时输出</span>
+                        <button class="btn btn-sm btn-primary" onclick="clearLogs()">🗑️ 清空显示</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="logContainer" class="log-container"></div>
+                    </div>
+                </div>
+
+                <!-- 命令执行 -->
+                <div class="card" style="margin-bottom: 1rem;">
+                    <div class="card-header">💻 命令执行</div>
+                    <div class="card-body">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="commandInput" placeholder="输入命令 (例如: /op player1, /gamemode creative, /say hello)" onkeypress="if(event.key === 'Enter') sendCommand()">
+                            <button class="btn btn-success" onclick="sendCommand()">📤 发送命令</button>
+                        </div>
+                        <p style="margin-top: 0.5rem; font-size: 0.85rem; color: #888;">提示: 服务器必须运行中才能发送命令</p>
+                    </div>
+                </div>
+
+                <!-- 服务器配置 -->
+                <div class="card" style="margin-bottom: 1rem;">
+                    <div class="card-header">⚙️ 服务器配置</div>
+                    <div class="card-body">
+                        <form id="configForm">
+                            <div class="row" style="gap: 1rem;">
+                                <div style="flex: 1;">
+                                    <div class="form-group">
+                                        <label class="form-label">服务器名称</label>
+                                        <input type="text" class="form-control" id="configServerName" name="server-name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">MOTD</label>
+                                        <input type="text" class="form-control" id="configMOTD" name="motd">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">最大玩家数</label>
+                                        <input type="number" class="form-control" id="configMaxPlayers" name="max-players">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">端口</label>
+                                        <input type="number" class="form-control" id="configPort" name="server-port">
+                                    </div>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div class="form-group">
+                                        <label class="form-label">游戏模式</label>
+                                        <select class="form-select" id="configGameMode" name="gamemode">
+                                            <option value="survival">生存模式</option>
+                                            <option value="creative">创造模式</option>
+                                            <option value="adventure">冒险模式</option>
+                                            <option value="spectator">旁观模式</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">难度</label>
+                                        <select class="form-select" id="configDifficulty" name="difficulty">
+                                            <option value="peaceful">和平</option>
+                                            <option value="easy">简单</option>
+                                            <option value="normal">普通</option>
+                                            <option value="hard">困难</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">PVP</label>
+                                        <select class="form-select" id="configPVP" name="pvp">
+                                            <option value="true">启用</option>
+                                            <option value="false">禁用</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">在线模式</label>
+                                        <select class="form-select" id="configOnlineMode" name="online-mode">
+                                            <option value="true">启用</option>
+                                            <option value="false">禁用</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">空置暂停（秒）</label>
+                                        <input type="number" class="form-control" id="configPauseWhenEmpty" name="pause-when-empty-seconds" min="0" placeholder="0=禁用, 60=60秒">
+                                        <small style="color: #888; font-size: 0.8rem;">设置为0禁用自动暂停</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">💾 保存配置</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 白名单管理 -->
+                <div class="card" style="margin-bottom: 1rem;">
+                    <div class="card-header">👥 白名单管理</div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="whitelistName" placeholder="玩家名称">
+                                <button class="btn btn-primary" onclick="addToWhitelist()">➕ 添加</button>
+                            </div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>名称</th>
+                                    <th>UUID</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="whitelistTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 管理员管理 -->
+                <div class="card" style="margin-bottom: 1rem;">
+                    <div class="card-header">👑 管理员管理</div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="opName" placeholder="玩家名称">
+                                <select class="form-select" id="opLevel" style="width: 120px;">
+                                    <option value="1">Level 1</option>
+                                    <option value="2">Level 2</option>
+                                    <option value="3">Level 3</option>
+                                    <option value="4" selected>Level 4</option>
+                                </select>
+                                <button class="btn btn-primary" onclick="addOp()">➕ 添加</button>
+                            </div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>名称</th>
+                                    <th>等级</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="opsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 封禁玩家管理 -->
+                <div class="card" style="margin-bottom: 1rem;">
+                    <div class="card-header">🚫 封禁玩家管理</div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="banPlayerName" placeholder="玩家名称">
+                                <input type="text" class="form-control" id="banReason" placeholder="原因">
+                                <button class="btn btn-danger" onclick="banPlayer()">🚫 封禁</button>
+                            </div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>名称</th>
+                                    <th>原因</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bannedPlayersTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 封禁IP管理 -->
+                <div class="card" style="margin-bottom: 1rem;">
+                    <div class="card-header">🚫 封禁IP管理</div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="banIP" placeholder="IP地址">
+                                <input type="text" class="form-control" id="banIPReason" placeholder="原因">
+                                <button class="btn btn-danger" onclick="banIP()">🚫 封禁</button>
+                            </div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>IP</th>
+                                    <th>原因</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bannedIPsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Mod管理 -->
+                <div class="card" style="margin-bottom: 1rem;">
+                    <div class="card-header">📦 Mod管理</div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">添加Mod</label>
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="modFile" accept=".jar">
+                                <button class="btn btn-primary" onclick="addMod()">📤 上传</button>
+                            </div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>名称</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 备份管理 -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>💾 世界备份</span>
+                        <button class="btn btn-primary" onclick="createBackup()">➕ 创建备份</button>
+                    </div>
+                    <div class="card-body">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>名称</th>
+                                    <th>大小</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backupsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script>
+// 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 加载初始数据
+            loadStatus();
+            loadLogs();
+            checkServerInstalled();
+            loadConfig();
+            loadWhitelist();
+            loadOps();
+            loadBannedPlayers();
+            loadBannedIPs();
+            loadMods();
+            loadBackups();
+            loadTimeSyncStatus();
+        });
+
+        // 检查服务器是否已安装
+        async function checkServerInstalled() {
+            const result = await apiCall('/api/server/check-installed');
+            if (result) {
+                const installPrompt = document.getElementById('installPrompt');
+                const btnStart = document.getElementById('btnStart');
+                
+                if (!result.installed) {
+                    installPrompt.style.display = 'block';
+                    btnStart.disabled = true;
+                } else {
+                    installPrompt.style.display = 'none';
+                }
+            }
+        }
+
+        // 安装服务器
+        async function installServer() {
+            const version = document.getElementById('installVersion').value.trim();
+            if (!version) {
+                showToast('请输入Minecraft版本', 'warning');
+                return;
+            }
+            
+            if (confirm(`确定要安装 Fabric ${version} 服务器吗?\n\n这将下载必要的文件，可能需要一些文件，可能需要一些时间。`)) {
+                showToast('正在安装Fabric服务器，请稍候...', 'info');
+                
+                const result = await apiCall('/api/server/install', 'POST', { mc_version: version });
+                if (result) {
+                    showToast(result.message, result.success ? 'success' : 'danger');
+                    if (result.success) {
+                        checkServerInstalled();
+                    }
+                }
+            }
+        }
+
+// API 调用
+        async function apiCall(url, method = 'GET', data = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+
+            try {
+                const response = await fetch(url, options);
+                
+                // 检查响应是否为JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(`服务器返回非JSON响应: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                showToast('错误: ' + error.message, 'danger');
+                return null;
+            }
+        }
+
+        // 加载状态
+        let lastStatusHash = '';
+        
+        async function loadStatus() {
+            const status = await apiCall('/api/status');
+            if (status) {
+                // 计算状态哈希值
+                const statusHash = JSON.stringify(status);
+                
+                if (statusHash !== lastStatusHash) {
+                    updateStatus(status);
+                    lastStatusHash = statusHash;
+                }
+            }
+        }
+
+        // 更新状态显示
+        function updateStatus(status) {
+            const badge = document.getElementById('serverStatusBadge');
+            const btnStart = document.getElementById('btnStart');
+            const btnStop = document.getElementById('btnStop');
+            const btnRestart = document.getElementById('btnRestart');
+
+            if (status.running) {
+                badge.className = 'status-badge status-running';
+                badge.textContent = '● 运行中';
+                btnStart.disabled = true;
+                btnStop.disabled = false;
+                btnRestart.disabled = false;
+            } else {
+                badge.className = 'status-badge status-stopped';
+                badge.textContent = '● 未运行';
+                btnStart.disabled = false;
+                btnStop.disabled = true;
+                btnRestart.disabled = true;
+            }
+
+            document.getElementById('statMemory').textContent = (status.memory_usage || 0).toFixed(2) + ' MB';
+            document.getElementById('statCPU').textContent = (status.cpu_usage || 0).toFixed(1) + '%';
+            document.getElementById('serverName').textContent = status.server_name || 'Loading...';
+            document.getElementById('serverMOTD').textContent = status.motd || 'Loading...';
+            document.getElementById('maxPlayers').textContent = status.max_players || 'Loading...';
+            document.getElementById('serverPort').textContent = status.server_port || 'Loading...';
+            document.getElementById('gameMode').textContent = status.gamemode || 'Loading...';
+            document.getElementById('difficulty').textContent = status.difficulty || 'Loading...';
+            document.getElementById('levelName').textContent = status.level_name || 'Loading...';
+        }
+
+        // 服务器控制
+        async function startServer() {
+            // 先检查服务器是否已安装
+            const checkResult = await apiCall('/api/server/check-installed');
+            if (checkResult && !checkResult.installed) {
+                showToast('请先安装Fabric服务器', 'warning');
+                checkServerInstalled();
+                return;
+            }
+            
+            const result = await apiCall('/api/server/start', 'POST');
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    loadStatus();
+                }
+            }
+        }
+
+        async function stopServer() {
+            if (confirm('确定要停止服务器吗?')) {
+                const result = await apiCall('/api/server/stop', 'POST');
+                if (result) {
+                    showToast(result.message, result.success ? 'success' : 'danger');
+                    if (result.success) {
+                        loadStatus();
+                    }
+                }
+            }
+        }
+
+        async function restartServer() {
+            if (confirm('确定要重启服务器吗?')) {
+                const result = await apiCall('/api/server/restart', 'POST');
+                if (result) {
+                    showToast(result.message, result.success ? 'success' : 'danger');
+                    if (result.success) {
+                        loadStatus();
+                    }
+                }
+            }
+        }
+
+        async function killJava() {
+            if (confirm('确定要强制结束所有 Java 进程吗?\n\n这将结束所有正在运行的 Java 程序，包括 Minecraft 服务器和其他 Java 应用。')) {
+                const result = await apiCall('/api/server/kill-java', 'POST');
+                if (result) {
+                    showToast(result.message, result.success ? 'success' : 'danger');
+                    if (result.success) {
+                        loadStatus();
+                    }
+                }
+            }
+        }
+
+        // 加载配置
+        async function loadConfig() {
+            const config = await apiCall('/api/config');
+            if (config) {
+                document.getElementById('configServerName').value = config['server-name'] || '';
+                document.getElementById('configMOTD').value = config.motd || '';
+                document.getElementById('configMaxPlayers').value = config['max-players'] || '';
+                document.getElementById('configPort').value = config['server-port'] || '';
+                document.getElementById('configGameMode').value = config.gamemode || 'survival';
+                document.getElementById('configDifficulty').value = config.difficulty || 'easy';
+                document.getElementById('configPVP').value = config.pvp || 'true';
+                document.getElementById('configOnlineMode').value = config['online-mode'] || 'true';
+                document.getElementById('configPauseWhenEmpty').value = config['pause-when-empty-seconds'] || '60';
+            }
+        }
+
+        // 保存配置
+        document.getElementById('configForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const config = {};
+            formData.forEach((value, key) => {
+                config[key] = value;
+            });
+            const result = await apiCall('/api/config', 'POST', config);
+            if (result) {
+                showToast('配置已保存', 'success');
+                loadStatus();
+            }
+        });
+
+        // 日志
+        let lastLogHash = '';
+        let lastLogCount = 0;
+        
+        async function loadLogs() {
+            const logs = await apiCall('/api/logs?lines=100');
+            if (logs && Array.isArray(logs)) {
+                // 计算日志哈希值，检查是否有新内容
+                const currentHash = logs.join('');
+                const currentCount = logs.length;
+                
+                // 如果哈希值不同或者数量不同，则更新
+                if (currentHash !== lastLogHash || currentCount !== lastLogCount) {
+                    const container = document.getElementById('logContainer');
+                    
+                    // 清空并重新加载所有日志
+                    container.innerHTML = '';
+                    logs.forEach(log => {
+                        appendLog(log);
+                    });
+                    
+                    // 自动滚动到底部
+                    container.scrollTop = container.scrollHeight;
+                    
+                    // 更新哈希值和数量
+                    lastLogHash = currentHash;
+                    lastLogCount = currentCount;
+                }
+            }
+        }
+
+        function appendLog(log, isCommandOutput = false) {
+            const container = document.getElementById('logContainer');
+            const line = document.createElement('div');
+            
+            // 直接显示原始日志，不进行任何格式化
+            line.className = 'log-line';
+            line.textContent = log;
+            
+            container.appendChild(line);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 加载初始日志
+        loadLogs();
+
+        // 加载命令输出
+        async function loadCommandOutput() {
+            const output = await apiCall('/api/command-output');
+            if (output) {
+                output.forEach(item => appendLog(item, true));
+            }
+        }
+
+// 启动轮询（使用配置中的轮询间隔）
+        // 确保在DOMContentLoaded之后启动轮询
+        setTimeout(() => {
+            if (window.DEBUG_MODE) {
+                console.log('[DEBUG] 准备启动轮询...');
+            }
+        }, 100);
+
+        // 白名单
+        async function loadWhitelist() {
+            const whitelist = await apiCall('/api/whitelist');
+            if (whitelist) {
+                const tbody = document.getElementById('whitelistTable');
+                tbody.innerHTML = '';
+                whitelist.forEach(player => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${player.name}</td>
+                        <td>${player.uuid}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="removeFromWhitelist('${player.name}')">🗑️</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        async function addToWhitelist() {
+            const name = document.getElementById('whitelistName').value.trim();
+            if (!name) return;
+            const result = await apiCall('/api/whitelist', 'POST', { name });
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    document.getElementById('whitelistName').value = '';
+                    loadWhitelist();
+                }
+            }
+        }
+
+        async function removeFromWhitelist(name) {
+            const result = await apiCall('/api/whitelist', 'DELETE', { name });
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    loadWhitelist();
+                }
+            }
+        }
+
+        // 管理员
+        async function loadOps() {
+            const ops = await apiCall('/api/ops');
+            if (ops) {
+                const tbody = document.getElementById('opsTable');
+                tbody.innerHTML = '';
+                ops.forEach(op => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${op.name}</td>
+                        <td>Level ${op.level}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="removeOp('${op.name}')">🗑️</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        async function addOp() {
+            const name = document.getElementById('opName').value.trim();
+            const level = document.getElementById('opLevel').value;
+            if (!name) return;
+            const result = await apiCall('/api/ops', 'POST', { name, level });
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    document.getElementById('opName').value = '';
+                    loadOps();
+                }
+            }
+        }
+
+        async function removeOp(name) {
+            const result = await apiCall('/api/ops', 'DELETE', { name });
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    loadOps();
+                }
+            }
+        }
+
+        // 封禁玩家
+        async function loadBannedPlayers() {
+            const banned = await apiCall('/api/banned-players');
+            if (banned) {
+                const tbody = document.getElementById('bannedPlayersTable');
+                tbody.innerHTML = '';
+                banned.forEach(player => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${player.name}</td>
+                        <td>${player.reason || '无'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="unbanPlayer('${player.name}')">✅ 解封</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        async function banPlayer() {
+            const name = document.getElementById('banPlayerName').value.trim();
+            const reason = document.getElementById('banReason').value.trim();
+            if (!name) return;
+            const result = await apiCall('/api/banned-players', 'POST', { name, reason });
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    document.getElementById('banPlayerName').value = '';
+                    document.getElementById('banReason').value = '';
+                    loadBannedPlayers();
+                }
+            }
+        }
+
+        async function unbanPlayer(name) {
+            const result = await apiCall('/api/banned-players', 'DELETE', { name });
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    loadBannedPlayers();
+                }
+            }
+        }
+
+        // 封禁IP
+        async function loadBannedIPs() {
+            const banned = await apiCall('/api/banned-ips');
+            if (banned) {
+                const tbody = document.getElementById('bannedIPsTable');
+                tbody.innerHTML = '';
+                banned.forEach(ip => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${ip.ip}</td>
+                        <td>${ip.reason || '无'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="unbanIP('${ip.ip}')">✅ 解封</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        async function banIP() {
+            const ip = document.getElementById('banIP').value.trim();
+            const reason = document.getElementById('banIPReason').value.trim();
+            if (!ip) return;
+            const result = await apiCall('/api/banned-ips', 'POST', { ip, reason });
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    document.getElementById('banIP').value = '';
+                    document.getElementById('banIPReason').value = '';
+                    loadBannedIPs();
+                }
+            }
+        }
+
+        async function unbanIP(ip) {
+            const result = await apiCall('/api/banned-ips', 'DELETE', { ip });
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    loadBannedIPs();
+                }
+            }
+        }
+
+        // Mods
+        async function loadMods() {
+            const mods = await apiCall('/api/mods');
+            if (mods) {
+                const tbody = document.getElementById('modsTable');
+                tbody.innerHTML = '';
+                mods.forEach(mod => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${mod}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="removeMod('${mod}')">🗑️</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        async function addMod() {
+            const fileInput = document.getElementById('modFile');
+            if (fileInput.files.length === 0) {
+                showToast('请选择Mod文件', 'warning');
+                return;
+            }
+            showToast('Mod上传功能暂未实现', 'warning');
+        }
+
+        async function removeMod(name) {
+            if (confirm(`确定要删除Mod ${name} 吗?`)) {
+                const result = await apiCall('/api/mods', 'DELETE', { name });
+                if (result) {
+                    showToast(result.message, result.success ? 'success' : 'danger');
+                    if (result.success) {
+                        loadMods();
+                    }
+                }
+            }
+        }
+
+        // 备份
+        async function loadBackups() {
+            const backups = await apiCall('/api/backups');
+            if (backups) {
+                const tbody = document.getElementById('backupsTable');
+                tbody.innerHTML = '';
+                backups.forEach(backup => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${backup.name}</td>
+                        <td>${(backup.size / 1024 / 1024).toFixed(2)} MB</td>
+                        <td>${backup.created}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="downloadBackup('${backup.name}')">⬇️</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteBackup('${backup.name}')">🗑️</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        async function createBackup() {
+            const result = await apiCall('/api/backups', 'POST');
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    loadBackups();
+                }
+            }
+        }
+
+        async function deleteBackup(name) {
+            if (confirm(`确定要删除备份 ${name} 吗?`)) {
+                const result = await apiCall('/api/backups', 'DELETE', { name });
+                if (result) {
+                    showToast(result.message, result.success ? 'success' : 'danger');
+                    if (result.success) {
+                        loadBackups();
+                    }
+                }
+            }
+        }
+
+        function downloadBackup(name) {
+            showToast('下载功能暂未实现', 'warning');
+        }
+
+        // 命令执行
+        async function sendCommand() {
+            const command = document.getElementById('commandInput').value.trim();
+            if (!command) {
+                showToast('请输入命令', 'warning');
+                return;
+            }
+            
+            const result = await apiCall('/api/server/command', 'POST', { command });
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    document.getElementById('commandInput').value = '';
+                }
+            }
+        }
+
+        // Toast 通知
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // 时间同步相关函数
+        async function loadTimeSyncStatus() {
+            const status = await apiCall('/api/time-sync/status');
+            if (status) {
+                document.getElementById('timeSyncStatus').textContent = status.enabled ? '已启用' : '已禁用';
+                document.getElementById('lastTimeSync').textContent = status.last_sync_formatted || '从未同步';
+                document.getElementById('timeSyncInterval').textContent = status.sync_interval + ' 秒';
+                
+                const minutes = Math.floor(status.time_until_next_sync / 60);
+                const seconds = Math.floor(status.time_until_next_sync % 60);
+                document.getElementById('timeUntilNextSync').textContent = 
+                    `${minutes}分${seconds}秒`;
+            }
+        }
+
+        async function syncTime() {
+            const result = await apiCall('/api/time-sync/sync', 'POST');
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    loadTimeSyncStatus();
+                }
+            }
+        }
+
+        async function enableTimeSync() {
+            const interval = prompt('请输入同步间隔（秒，最少60秒）:', '3600');
+            if (interval === null) return;
+            
+            const intervalNum = parseInt(interval);
+            if (isNaN(intervalNum) || intervalNum < 60) {
+                showToast('同步间隔必须大于等于60秒', 'warning');
+                return;
+            }
+            
+            const result = await apiCall('/api/time-sync/enable', 'POST', { interval: intervalNum });
+            if (result) {
+                showToast(result.message, result.success ? 'success' : 'danger');
+                if (result.success) {
+                    loadTimeSyncStatus();
+                }
+            }
+        }
+
+        async function disableTimeSync() {
+            if (confirm('确定要禁用自动时间同步吗？')) {
+                const result = await apiCall('/api/time-sync/disable', 'POST');
+                if (result) {
+                    showToast(result.message, result.success ? 'success' : 'danger');
+                    if (result.success) {
+                        loadTimeSyncStatus();
+                    }
+                }
+            }
+        }
+        
+        // 启动前端调试模式
+        window.DEBUG_MODE = false;  // 禁用调试模式以提高性能
+        
+        // 启动轮询
+        setTimeout(() => {
+            // 启动日志轮询
+            setInterval(loadLogs, 1000);  // 每1秒更新日志
+            
+            // 启动状态轮询
+            setInterval(loadStatus, 5000);
+            
+            // 启动命令输出轮询
+            setInterval(loadCommandOutput, 2000);
+            
+            // 启动时间同步状态轮询
+            setInterval(loadTimeSyncStatus, 5000);
+        }, 1000);
+    </script>
+</body>
+</html>

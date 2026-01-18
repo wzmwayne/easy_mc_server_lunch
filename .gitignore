@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Server Data
+data/world/
+data/logs/
+data/backups/
+data/.fabric/
+data/*.json
+data/*.jar
+data/*.txt
+
+# Auth Plugin
+auth-plugin/build/
+auth-plugin/.gradle/
+auth-plugin/.idea/
+auth-plugin/*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+.persistent_output.json
