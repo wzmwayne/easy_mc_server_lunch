@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置API测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>配置API测试</h1>
+        
+        <div id="testResults"></div>
+        
+        <h2>测试按钮</h2>
+        <button onclick="testGetConfig()">测试 GET /api/config</button>
+        <button onclick="testPostConfig()">测试 POST /api/config</button>
+        <button onclick="clearResults()">清空结果</button>
+        
+        <h2>配置表单（模拟）</h2>
+        <form id="configForm">
+            <label>服务器名称:</label>
+            <input type="text" id="configServerName" name="server-name" value="">
+            
+            <label>MOTD:</label>
+            <input type="text" id="configMOTD" name="motd" value="">
+            
+            <label>最大玩家数:</label>
+            <input type="number" id="configMaxPlayers" name="max-players" value="">
+            
+            <label>端口:</label>
+            <input type="number" id="configPort" name="server-port" value="">
+            
+            <label>游戏模式:</label>
+            <select id="configGameMode" name="gamemode">
+                <option value="survival">生存模式</option>
+                <option value="creative">创造模式</option>
+                <option value="adventure">冒险模式</option>
+                <option value="spectator">旁观模式</option>
+            </select>
+            
+            <label>难度:</label>
+            <select id="configDifficulty" name="difficulty">
+                <option value="peaceful">和平</option>
+                <option value="easy">简单</option>
+                <option value="normal">普通</option>
+                <option value="hard">困难</option>
+            </select>
+        </form>
+        
+        <h2>当前表单值</h2>
+        <pre id="formValues"></pre>
+    </div>
+
+    <script>
+        function addResult(message, type) {
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = message;
+            resultsDiv.appendChild(resultDiv);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        async function testGetConfig() {
+            addResult('开始测试 GET /api/config...', 'info');
+            
+            try {
+                const response = await fetch('/api/config');
+                addResult(`响应状态: ${response.status}`, 'info');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const config = await response.json();
+                addResult(`成功获取配置: <pre>${JSON.stringify(config, null, 2)}</pre>`, 'success');
+                
+                // 填充表单
+                document.getElementById('configServerName').value = config['server-name'] || '';
+                document.getElementById('configMOTD').value = config.motd || '';
+                document.getElementById('configMaxPlayers').value = config['max-players'] || '';
+                document.getElementById('configPort').value = config['server-port'] || '';
+                document.getElementById('configGameMode').value = config.gamemode || 'survival';
+                document.getElementById('configDifficulty').value = config.difficulty || 'easy';
+                
+                addResult('表单已填充', 'success');
+                updateFormValues();
+            } catch (error) {
+                addResult(`错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPostConfig() {
+            addResult('开始测试 POST /api/config...', 'info');
+            
+            const formData = new FormData(document.getElementById('configForm'));
+            const config = {};
+            formData.forEach((value, key) => {
+                config[key] = value;
+            });
+            
+            addResult(`发送配置: <pre>${JSON.stringify(config, null, 2)}</pre>`, 'info');
+            
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+                
+                addResult(`响应状态: ${response.status}`, 'info');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                addResult(`成功保存配置: <pre>${JSON.stringify(result, null, 2)}</pre>`, 'success');
+            } catch (error) {
+                addResult(`错误: ${error.message}`, 'error');
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '';
+        }
+
+        function updateFormValues() {
+            const formData = new FormData(document.getElementById('configForm'));
+            const config = {};
+            formData.forEach((value, key) => {
+                config[key] = value;
+            });
+            document.getElementById('formValues').textContent = JSON.stringify(config, null, 2);
+        }
+
+        // 监听表单变化
+        document.getElementById('configForm').addEventListener('input', updateFormValues);
+
+        // 页面加载时自动测试
+        window.addEventListener('load', function() {
+            addResult('页面已加载，准备测试...', 'info');
+            setTimeout(testGetConfig, 1000);
+        });
+    </script>
+</body>
+</html>

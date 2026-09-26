@@ -689,6 +689,7 @@
     <script>
 // 页面加载时初始化
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('[DEBUG] DOM 加载完成，开始初始化...');
             // 加载初始数据
             loadStatus();
             loadLogs();
@@ -701,6 +702,7 @@
             loadMods();
             loadBackups();
             loadTimeSyncStatus();
+            console.log('[DEBUG] 初始化完成');
         });
 
         // 检查服务器是否已安装
@@ -741,7 +743,7 @@
         }
 
 // API 调用
-        async function apiCall(url, method = 'GET', data = null) {
+        async function apiCall(url, method = 'GET', data = null, showErrors = true) {
             const options = {
                 method,
                 headers: {
@@ -754,6 +756,10 @@
             }
 
             try {
+                if (window.DEBUG_MODE) {
+                    console.log(`[DEBUG] API Call: ${method} ${url}`, data);
+                }
+                
                 const response = await fetch(url, options);
                 
                 // 检查响应是否为JSON
@@ -763,9 +769,19 @@
                 }
                 
                 const result = await response.json();
+                
+                if (window.DEBUG_MODE) {
+                    console.log(`[DEBUG] API Response:`, result);
+                }
+                
                 return result;
             } catch (error) {
-                showToast('错误: ' + error.message, 'danger');
+                if (window.DEBUG_MODE) {
+                    console.error(`[DEBUG] API Error:`, error);
+                }
+                if (showErrors) {
+                    showToast('错误: ' + error.message, 'danger');
+                }
                 return null;
             }
         }
@@ -875,17 +891,46 @@
 
         // 加载配置
         async function loadConfig() {
-            const config = await apiCall('/api/config');
-            if (config) {
-                document.getElementById('configServerName').value = config['server-name'] || '';
-                document.getElementById('configMOTD').value = config.motd || '';
-                document.getElementById('configMaxPlayers').value = config['max-players'] || '';
-                document.getElementById('configPort').value = config['server-port'] || '';
-                document.getElementById('configGameMode').value = config.gamemode || 'survival';
-                document.getElementById('configDifficulty').value = config.difficulty || 'easy';
-                document.getElementById('configPVP').value = config.pvp || 'true';
-                document.getElementById('configOnlineMode').value = config['online-mode'] || 'true';
-                document.getElementById('configPauseWhenEmpty').value = config['pause-when-empty-seconds'] || '60';
+            try {
+                console.log('[DEBUG] 开始加载配置...');
+                const config = await apiCall('/api/config');
+                console.log('[DEBUG] 从API获取的配置:', config);
+                
+                if (config && typeof config === 'object') {
+                    console.log('[DEBUG] 配置对象键名:', Object.keys(config));
+                    
+                    // 映射配置项到表单字段
+                    const configMap = {
+                        'configServerName': config['server-name'] || '',
+                        'configMOTD': config.motd || '',
+                        'configMaxPlayers': config['max-players'] || '20',
+                        'configPort': config['server-port'] || '25565',
+                        'configGameMode': config.gamemode || 'survival',
+                        'configDifficulty': config.difficulty || 'easy',
+                        'configPVP': config.pvp || 'true',
+                        'configOnlineMode': config['online-mode'] || 'true',
+                        'configPauseWhenEmpty': config['pause-when-empty-seconds'] || '60'
+                    };
+                    
+                    console.log('[DEBUG] 配置映射结果:', configMap);
+                    
+                    // 将配置值填充到表单
+                    for (const [elementId, value] of Object.entries(configMap)) {
+                        const element = document.getElementById(elementId);
+                        if (element) {
+                            element.value = value;
+                            console.log(`[DEBUG] 设置 ${elementId} = ${value}`);
+                        } else {
+                            console.error(`[DEBUG] 找不到元素: ${elementId}`);
+                        }
+                    }
+                    
+                    console.log('[DEBUG] 配置加载完成');
+                } else {
+                    console.error('配置加载失败：返回的数据格式不正确', config);
+                }
+            } catch (error) {
+                console.error('加载配置时出错:', error);
             }
         }
 
@@ -897,9 +942,28 @@
             formData.forEach((value, key) => {
                 config[key] = value;
             });
+            
             const result = await apiCall('/api/config', 'POST', config);
             if (result) {
-                showToast('配置已保存', 'success');
+                // 检查结果是否为数组（批量更新结果）
+                if (Array.isArray(result)) {
+                    const successCount = result.filter(r => r.success).length;
+                    const totalCount = result.length;
+                    
+                    if (successCount === totalCount) {
+                        showToast(`所有配置已保存 (${totalCount} 项)`, 'success');
+                    } else {
+                        const failedItems = result.filter(r => !r.success).map(r => r.message).join('; ');
+                        showToast(`部分配置保存失败: ${failedItems}`, 'warning');
+                    }
+                } else if (result.success) {
+                    showToast(result.message, 'success');
+                } else {
+                    showToast(result.message, 'danger');
+                }
+                
+                // 重新加载配置和状态
+                loadConfig();
                 loadStatus();
             }
         });
@@ -963,8 +1027,14 @@
         // 加载命令输出
         async function loadCommandOutput() {
             const output = await apiCall('/api/command-output');
-            if (output) {
-                output.forEach(item => appendLog(item, true));
+            if (output && Array.isArray(output)) {
+                output.forEach(item => {
+                    // 将对象格式化为字符串，避免显示 '[object Object]'
+                    const message = typeof item === 'object' && item !== null 
+                        ? `[${item.timestamp}] [${item.level}] ${item.message}`
+                        : String(item);
+                    appendLog(message, true);
+                });
             }
         }
 
@@ -1178,7 +1248,40 @@
                 showToast('请选择Mod文件', 'warning');
                 return;
             }
-            showToast('Mod上传功能暂未实现', 'warning');
+            
+            const file = fileInput.files[0];
+            
+            if (!file.name.toLowerCase().endsWith('.jar')) {
+                showToast('只支持 .jar 格式的模组文件', 'warning');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('modFile', file);
+            
+            try {
+                showToast('正在上传Mod...', 'info');
+                
+                const response = await fetch('/api/mods/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                showToast(result.message, result.success ? 'success' : 'danger');
+                
+                if (result.success) {
+                    fileInput.value = '';
+                    loadMods();
+                }
+            } catch (error) {
+                showToast('上传失败: ' + error.message, 'danger');
+            }
         }
 
         async function removeMod(name) {
@@ -1329,7 +1432,7 @@
         }
         
         // 启动前端调试模式
-        window.DEBUG_MODE = false;  // 禁用调试模式以提高性能
+        window.DEBUG_MODE = true;  // 启用调试模式
         
         // 启动轮询
         setTimeout(() => {

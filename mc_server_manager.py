@@ -12,7 +12,7 @@ Minecraft Fabric Server Manager
 # 调试模式
 # True: 显示详细的调试信息（终端和浏览器控制台）
 # False: 不显示调试信息
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 # Flask 配置
 FLASK_HOST = '0.0.0.0'  # 监听地址（0.0.0.0 = 所有网络接口，127.0.0.1 = 仅本地）
@@ -139,18 +139,27 @@ class MCServerManager:
                 f.write(f"{key}={value}\n")
     
     def update_property(self, key: str, value: str) -> Dict:
-        """更新服务器配置属性"""
+        """更新或添加服务器配置属性"""
         result = {"success": False, "message": ""}
         
+        # 如果配置项不存在，自动添加
         if key not in self.properties:
-            result["message"] = f"配置项 {key} 不存在"
+            self.properties[key] = value
+            self._save_properties()
+            result["success"] = True
+            result["message"] = f"配置项 {key} 已添加并设置为 {value}"
             return result
         
-        self.properties[key] = value
-        self._save_properties()
+        # 更新现有配置项
+        if self.properties[key] != value:
+            self.properties[key] = value
+            self._save_properties()
+            result["success"] = True
+            result["message"] = f"配置项 {key} 已更新为 {value}"
+        else:
+            result["success"] = True
+            result["message"] = f"配置项 {key} 的值未改变"
         
-        result["success"] = True
-        result["message"] = f"配置项 {key} 已更新为 {value}"
         return result
     
     def _load_json(self, file_path: Path, default):
@@ -1052,21 +1061,6 @@ class MCServerManager:
             result["message"] = f"删除mod失败: {e}"
             return result
     
-    def update_property(self, key: str, value: str) -> Dict:
-        """更新服务器配置"""
-        result = {"success": False, "message": ""}
-        
-        if key not in self.properties:
-            result["message"] = f"配置项 {key} 不存在"
-            return result
-        
-        self.properties[key] = value
-        self._save_properties()
-        
-        result["success"] = True
-        result["message"] = f"配置 {key} 已更新为 {value}"
-        return result
-    
     def backup_world(self) -> Dict:
         """备份世界"""
         result = {"success": False, "message": ""}
@@ -1228,6 +1222,13 @@ if FLASK_AVAILABLE:
         """主页"""
         return render_template('index.html')
     
+    @app.route('/test-config')
+    def test_config():
+        """配置测试页面"""
+        test_file = Path(__file__).parent / 'test_config_api.html'
+        with open(test_file, 'r', encoding='utf-8') as f:
+            return f.read()
+    
     @app.route('/auth')
     def auth():
         """认证页面（已禁用）"""
@@ -1301,7 +1302,41 @@ if FLASK_AVAILABLE:
     def api_config():
         """获取或更新配置"""
         if request.method == 'GET':
-            return jsonify(manager.properties)
+            if DEBUG_MODE:
+                print(f"[DEBUG] API: /api/config GET")
+                print(f"[DEBUG] 当前配置: {manager.properties}")
+                print(f"[DEBUG] server.properties 存在: {manager.config_file.exists()}")
+            
+            # 返回当前配置，确保包含所有必要的配置项
+            config = manager.properties.copy()
+            
+            if DEBUG_MODE:
+                print(f"[DEBUG] 配置副本: {config}")
+            
+            # 如果配置为空或某些关键配置缺失，添加默认值
+            default_configs = {
+                'server-name': 'Minecraft Server',
+                'motd': 'A Minecraft Server',
+                'max-players': '20',
+                'server-port': '25565',
+                'gamemode': 'survival',
+                'difficulty': 'easy',
+                'pvp': 'true',
+                'online-mode': 'true',
+                'pause-when-empty-seconds': '60'
+            }
+            
+            # 确保所有默认配置项都存在
+            for key, default_value in default_configs.items():
+                if key not in config:
+                    if DEBUG_MODE:
+                        print(f"[DEBUG] 添加默认配置: {key} = {default_value}")
+                    config[key] = default_value
+            
+            if DEBUG_MODE:
+                print(f"[DEBUG] 返回配置: {config}")
+            
+            return jsonify(config)
         elif request.method == 'POST':
             data = request.json
             results = []
@@ -1379,6 +1414,36 @@ if FLASK_AVAILABLE:
             data = request.json
             result = manager.remove_mod(data.get('name', ''))
             return jsonify(result)
+    
+    @app.route('/api/mods/upload', methods=['POST'])
+    def api_upload_mod():
+        """上传Mod文件"""
+        if 'modFile' not in request.files:
+            return jsonify({"success": False, "message": "没有上传文件"})
+        
+        file = request.files['modFile']
+        
+        if file.filename == '':
+            return jsonify({"success": False, "message": "文件名为空"})
+        
+        if not file.filename.lower().endswith('.jar'):
+            return jsonify({"success": False, "message": "只支持 .jar 格式的模组文件"})
+        
+        if not manager.mods_dir.exists():
+            manager.mods_dir.mkdir(parents=True, exist_ok=True)
+        
+        dest_path = manager.mods_dir / file.filename
+        
+        if dest_path.exists():
+            return jsonify({"success": False, "message": f"Mod {file.filename} 已存在"})
+        
+        try:
+            file.save(str(dest_path))
+            manager._log_command_output(f"Mod {file.filename} 上传成功", "success")
+            return jsonify({"success": True, "message": f"Mod {file.filename} 上传成功"})
+        except Exception as e:
+            manager._log_command_output(f"Mod 上传失败: {e}", "error")
+            return jsonify({"success": False, "message": f"上传失败: {e}"})
     
     @app.route('/api/logs')
     def api_logs():
